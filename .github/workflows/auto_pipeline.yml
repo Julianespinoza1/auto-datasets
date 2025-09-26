@@ -1,0 +1,40 @@
+name: Auto Dataset Pipeline
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # ejecuta cada hora
+  workflow_dispatch:
+
+jobs:
+  build_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Generate dataset
+        run: python Generador.py
+
+      - name: Upload to Pinata (IPFS)
+        env:
+          PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
+          PINATA_API_SECRET: ${{ secrets.PINATA_API_SECRET }}
+          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
+        run: python CargadorDePiñata.py
+
+      - name: Simulate/Record sale
+        env:
+          SIM_SALE_AMT: ${{ secrets.SIM_SALE_AMT }}
+        run: python AdministradorDeIngresos.py
+
+      - name: Daily settle (optional)
+        if: github.event_name == 'workflow_dispatch'
+        run: python AdministradorDeIngresos.py settle
