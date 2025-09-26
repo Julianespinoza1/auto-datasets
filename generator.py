@@ -14,7 +14,7 @@ def generate_row(i):
         "geo": {"lat": round(random.uniform(-90,90),6), "lon": round(random.uniform(-180,180),6)}
     }
 
-def generate_dataset(rows=10000):
+def generate_dataset(rows=5000):
     return [generate_row(i) for i in range(rows)]
 
 def write_jsonl(dataset, outpath):
@@ -24,7 +24,7 @@ def write_jsonl(dataset, outpath):
 
 if __name__ == "__main__":
     import os
-    rows = int(os.getenv("ROWS_PER_DATASET","10000"))
+    rows = int(os.getenv("ROWS_PER_DATASET","5000"))
     stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     filename = f"dataset_{stamp}.jsonl"
     ds = generate_dataset(rows=rows)
