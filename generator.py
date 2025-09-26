@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# Generador.py — genera datasets sintéticos de alta calidad, metadata y schema
+
 import json, random, time, uuid
 from datetime import datetime, timezone
-import os
 
 def generate_row(i):
     return {
@@ -22,11 +23,14 @@ def write_jsonl(dataset, outpath):
             f.write(json.dumps(row, separators=(',',':')) + "\n")
 
 if __name__ == "__main__":
+    import os
     rows = int(os.getenv("ROWS_PER_DATASET","5000"))
     stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     filename = f"dataset_{stamp}.jsonl"
     ds = generate_dataset(rows=rows)
     write_jsonl(ds, filename)
+
+    # metadata
     meta = {
         "file": filename,
         "rows": len(ds),
@@ -35,4 +39,5 @@ if __name__ == "__main__":
     }
     with open(filename + ".meta.json", "w", encoding="utf-8") as mf:
         json.dump(meta, mf, indent=2)
+
     print("Generated", filename)
