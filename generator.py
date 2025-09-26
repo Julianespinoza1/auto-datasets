@@ -24,7 +24,7 @@ OUT_DIR = os.getenv("OUT_DIR", ".")
 DP_EPSILON = float(os.getenv("DP_EPSILON", "0.0"))   # 0.0 = off
 DP_SENSITIVITY = float(os.getenv("DP_SENSITIVITY", "1.0"))
 COMPRESS = os.getenv("COMPRESS", "1") not in ("0", "false", "False")
-GENERATOR_VERSION = "gen-1.1"
+GENERATOR_VERSION = "gen-1.2"  # actualizado
 
 def now_iso():
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -58,7 +58,7 @@ def generate_row(i):
         "category": random.choice(["A","B","C","D"]),
         "flag": random.choice([True, False]),
         "geo": {"lat": round(random.uniform(-90,90),6), "lon": round(random.uniform(-180,180),6)},
-        "synthetic": True
+        "synthetic": True  # marca explícita de datos sintéticos
     }
 
 def write_stream_jsonl(rows_generator, outpath, compress=True):
