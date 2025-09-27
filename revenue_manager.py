@@ -1,39 +1,80 @@
 #!/usr/bin/env python3
-import os, json, time
+# AdministradorDeIngresos.py — registra ventas reales en ledger.json sin simulación ni reinversiones
 
-REINVEST_PERCENT = float(os.getenv("REINVEST_PERCENT","0.20"))
-LEDGER_FILE = "ledger.json"
+import os
+import json
+import time
+from datetime import datetime
+import argparse
 
-def record_sale(amount, source="market"):
-    entry = {"ts": time.time(), "amount": float(amount), "source": source}
-    ledger = []
-    if os.path.exists(LEDGER_FILE):
-        with open(LEDGER_FILE,"r") as f:
-            ledger = json.load(f)
+LEDGER_FILE = os.getenv("LEDGER_FILE", "ledger.json")
+
+def ensure_ledger():
+    """Crea el ledger si no existe"""
+    if not os.path.exists(LEDGER_FILE):
+        with open(LEDGER_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f)
+
+def record_sale(amount, currency="USD", source="market", tx_id=None, buyer=None, cid=None, notes=None):
+    """Registra una venta real"""
+    ensure_ledger()
+    entry = {
+        "ts": datetime.utcnow().isoformat() + "Z",
+        "epoch": time.time(),
+        "amount": float(amount),
+        "currency": currency,
+        "source": source,
+        "tx_id": tx_id,
+        "buyer": buyer,
+        "cid": cid,
+        "notes": notes
+    }
+    with open(LEDGER_FILE, "r", encoding="utf-8") as f:
+        ledger = json.load(f)
     ledger.append(entry)
-    with open(LEDGER_FILE,"w") as f:
+    with open(LEDGER_FILE, "w", encoding="utf-8") as f:
         json.dump(ledger, f, indent=2)
     return entry
 
-def settle_day():
-    if not os.path.exists(LEDGER_FILE):
-        print("No sales yet.")
-        return
-    with open(LEDGER_FILE,"r") as f:
+def show_ledger():
+    """Muestra todo el ledger"""
+    ensure_ledger()
+    with open(LEDGER_FILE, "r", encoding="utf-8") as f:
         ledger = json.load(f)
-    total = sum(e["amount"] for e in ledger)
-    reinvest = total * REINVEST_PERCENT
-    payout = total - reinvest
-    with open(LEDGER_FILE,"w") as f:
-        json.dump([], f)
-    print(f"Total sales: ${total:.2f} | Reinvest: ${reinvest:.2f} | To you: ${payout:.2f}")
-    return {"total":total,"reinvest":reinvest,"payout":payout}
+    return ledger
+
+def cli():
+    parser = argparse.ArgumentParser(description="Administrador de ventas reales")
+    sub = parser.add_subparsers(dest="cmd")
+
+    rec = sub.add_parser("record", help="Registrar una venta")
+    rec.add_argument("--amount", required=True, type=float)
+    rec.add_argument("--currency", default="USD")
+    rec.add_argument("--source", default="market")
+    rec.add_argument("--tx-id")
+    rec.add_argument("--buyer")
+    rec.add_argument("--cid")
+    rec.add_argument("--notes")
+
+    show = sub.add_parser("show", help="Mostrar ledger completo")
+
+    args = parser.parse_args()
+    if args.cmd == "record":
+        entry = record_sale(
+            amount=args.amount,
+            currency=args.currency,
+            source=args.source,
+            tx_id=args.tx_id,
+            buyer=args.buyer,
+            cid=args.cid,
+            notes=args.notes
+        )
+        print(json.dumps(entry, indent=2))
+    elif args.cmd == "show":
+        ledger = show_ledger()
+        print(json.dumps(ledger, indent=2))
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv)>1 and sys.argv[1]=="settle":
-        settle_day()
-    else:
-        amt = float(os.getenv("SIM_SALE_AMT","100.0"))
-        entry = record_sale(amt)
-        print("Recorded sale", entry)
+    cli()
