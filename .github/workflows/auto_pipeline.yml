@@ -52,7 +52,7 @@ jobs:
         shell: bash
 
       - name: Upload datasets to Pinata (runs from datasets)
-        if: ${{ secrets.PINATA_API_KEY != '' && secrets.PINATA_API_SECRET != '' }}
+        if: env.PINATA_API_KEY != '' && env.PINATA_API_SECRET != ''
         working-directory: ./datasets
         run: |
           echo "PWD: $(pwd)"
