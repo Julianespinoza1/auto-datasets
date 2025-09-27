@@ -50,6 +50,17 @@ Generating the future of synthetic data, one dataset at a time. 🚀
 - **Monthly Potential:** $480,000+ USD (24 datasets × $2,000)
 
 ---
+
+License
+All datasets generated are synthetic. They contain no real personal data. They are intended for testing, modeling, and AI purposes only.
+
+Commercial Use
+All datasets are available for sale or license. Purchasers acknowledge that datasets are synthetic.
+Revenue generated from these datasets is recorded and managed by the included automated pipeline.
+
+Do not attempt to reverse-engineer or use the datasets for illegal purposes.
+
+---
 ## Workflow Summary
 
 1. `Generador.py` → generates a `.jsonl.gz` dataset + `.meta.json`.
