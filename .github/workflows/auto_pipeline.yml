@@ -17,9 +17,7 @@ jobs:
           echo "PWD: $(pwd)"
           echo "Repo top:"
           ls -la
-          echo "Python version:"
           python -V || true
-          echo "Find py files:"
           find . -maxdepth 3 -type f -iname "*.py" -print || true
 
       - name: Setup Python
@@ -34,17 +32,12 @@ jobs:
 
       - name: Generate dataset (verbose)
         run: |
-          set -x
           mkdir -p ./datasets
-          # run generator unbuffered and capture output
           python -u generador.py 2>&1 | tee gen.log
-          echo "---- ls ./datasets ----"
           ls -la ./datasets || true
-          echo "---- head .meta.json (if any) ----"
           head -n 40 ./datasets/*.meta.json || true
-        continue-on-error: false
 
-      - name: Upload debug artifacts (datasets + logs)
+      - name: Upload datasets+logs artifact
         uses: actions/upload-artifact@v4
         with:
           name: generated-datasets-and-logs
@@ -52,23 +45,18 @@ jobs:
             ./datasets
             gen.log
 
-      - name: Prepare for Pinata upload (detailed)
+      - name: Check secrets presence
         run: |
-          echo "Secrets set?"
           echo "PINATA_API_KEY present: $([[ -n "${{ secrets.PINATA_API_KEY }}" ]] && echo yes || echo no)"
           echo "PINATA_API_SECRET present: $([[ -n "${{ secrets.PINATA_API_SECRET }}" ]] && echo yes || echo no)"
-          echo "Will run uploader from ./datasets if secrets exist."
         shell: bash
 
-      - name: Upload datasets to Pinata (verbose) 
+      - name: Upload datasets to Pinata (runs from datasets)
         if: ${{ secrets.PINATA_API_KEY && secrets.PINATA_API_SECRET }}
         working-directory: ./datasets
         run: |
-          set -x
-          # show current dir and files
           echo "PWD: $(pwd)"
           ls -la
-          # run uploader from datasets dir (uploader expects files in CWD)
           python -u ../cargador_pinata.py 2>&1 | tee ../upload.log
         env:
           PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
@@ -76,7 +64,7 @@ jobs:
           WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
           UPLOADED_LOG: ../uploaded.log
 
-      - name: Upload upload.log artifact (if produced)
+      - name: Upload upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -84,21 +72,3 @@ jobs:
           path: |
             upload.log
             uploaded.log || true
-
-      - name: Skip upload (secrets absent)
-        if: ${{ !secrets.PINATA_API_KEY || !secrets.PINATA_API_SECRET }}
-        run: echo "Pinata secrets missing — upload step skipped."
-
-      - name: Record sale (ledger)
-        run: |
-          python -u administrador_de_ingresos.py record --amount 100.0 --currency USD --source market 2>&1 | tee ledger_record.log || true
-        env:
-          LEDGER_FILE: ./ledger.json
-
-      - name: Upload ledger logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: ledger-logs
-          path: |
-            ledger_record.log
-            ledger_show.log || true
