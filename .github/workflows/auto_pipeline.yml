@@ -2,14 +2,14 @@ name: Auto Dataset Pipeline
 
 on:
   schedule:
-    - cron: "0 * * * *"  # ejecuta cada hora
-  workflow_dispatch:
+    - cron: "0 * * * *"  # Ejecuta cada hora automáticamente
+  workflow_dispatch:      # Permite ejecutar manualmente
 
 jobs:
   build_publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -17,24 +17,33 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install deps
-        run: pip install requests
+      - name: Install dependencies
+        run: |
+          pip install requests
 
-      - name: Generate dataset
+      - name: Generate synthetic dataset
         run: python Generador.py
+        env:
+          ROWS_PER_DATASET: 5000
+          OUT_DIR: ./datasets
+          PREFIX: dataset
 
-      - name: Upload to Pinata (IPFS)
+      - name: Upload datasets to Pinata
+        run: python CargadorDePiñata.py
         env:
           PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
           PINATA_API_SECRET: ${{ secrets.PINATA_API_SECRET }}
           WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
-        run: python CargadorDePiñata.py
+          UPLOADED_LOG: ./uploaded.log
 
-      - name: Simulate/Record sale
+      - name: Record real sale
+        run: |
+          # Aquí tu script de administrador de ingresos sin simulación
+          python AdministradorDeIngresos.py record --amount 100.0 --currency USD --source market
         env:
-          SIM_SALE_AMT: ${{ secrets.SIM_SALE_AMT }}
-        run: python AdministradorDeIngresos.py
+          LEDGER_FILE: ./ledger.json
 
-      - name: Daily settle (optional)
-        if: github.event_name == 'workflow_dispatch'
-        run: python AdministradorDeIngresos.py settle
+      - name: Show ledger (optional)
+        run: python AdministradorDeIngresos.py show
+        env:
+          LEDGER_FILE: ./ledger.json
