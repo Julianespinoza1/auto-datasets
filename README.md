@@ -70,5 +70,7 @@ Do not attempt to reverse-engineer or use the datasets for illegal purposes.
 5. Hugging Face account with API token
 
 ---
+email: jebooks12@gmail.com
+---
 
 With this setup, your workflow is **autonomous, secure, and legally compliant**, with synthetic datasets, real revenue tracking, and full control over your files and sales.
