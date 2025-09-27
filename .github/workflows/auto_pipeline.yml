@@ -1,4 +1,4 @@
-name: Auto Dataset Pipeline
+name: Auto Dataset Pipeline (debug)
 
 on:
   schedule:
@@ -6,70 +6,99 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_publish:
+  debug_run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Quick diagnostic (files & python)
+      - name: Show repo files & python version
         run: |
-          echo ">>> pwd: $(pwd)"
+          echo "PWD: $(pwd)"
+          echo "Repo top:"
           ls -la
-          find . -maxdepth 2 -type f -iname "*.py" -print || true
-          python -V
+          echo "Python version:"
+          python -V || true
+          echo "Find py files:"
+          find . -maxdepth 3 -type f -iname "*.py" -print || true
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Generate synthetic dataset
-        run: python generador.py
-        env:
-          ROWS_PER_DATASET: 5000
-          OUT_DIR: ./datasets
-          PREFIX: dataset
-
-      - name: List generated files (debug)
+      - name: Generate dataset (verbose)
         run: |
-          echo ">>> ls datasets:"
+          set -x
+          mkdir -p ./datasets
+          # run generator unbuffered and capture output
+          python -u generador.py 2>&1 | tee gen.log
+          echo "---- ls ./datasets ----"
           ls -la ./datasets || true
-          echo ">>> head of any .meta.json:"
-          head -n 20 ./datasets/*.meta.json || true
+          echo "---- head .meta.json (if any) ----"
+          head -n 40 ./datasets/*.meta.json || true
+        continue-on-error: false
 
-      - name: Upload datasets as artifact (debug)
+      - name: Upload debug artifacts (datasets + logs)
         uses: actions/upload-artifact@v4
         with:
-          name: generated-datasets
-          path: ./datasets
+          name: generated-datasets-and-logs
+          path: |
+            ./datasets
+            gen.log
 
-      - name: Upload datasets to Pinata
+      - name: Prepare for Pinata upload (detailed)
+        run: |
+          echo "Secrets set?"
+          echo "PINATA_API_KEY present: $([[ -n "${{ secrets.PINATA_API_KEY }}" ]] && echo yes || echo no)"
+          echo "PINATA_API_SECRET present: $([[ -n "${{ secrets.PINATA_API_SECRET }}" ]] && echo yes || echo no)"
+          echo "Will run uploader from ./datasets if secrets exist."
+        shell: bash
+
+      - name: Upload datasets to Pinata (verbose) 
         if: ${{ secrets.PINATA_API_KEY && secrets.PINATA_API_SECRET }}
         working-directory: ./datasets
-        run: python ../cargador_pinata.py
+        run: |
+          set -x
+          # show current dir and files
+          echo "PWD: $(pwd)"
+          ls -la
+          # run uploader from datasets dir (uploader expects files in CWD)
+          python -u ../cargador_pinata.py 2>&1 | tee ../upload.log
         env:
           PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
           PINATA_API_SECRET: ${{ secrets.PINATA_API_SECRET }}
           WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
           UPLOADED_LOG: ../uploaded.log
 
-      - name: Skip upload warning (no secrets)
+      - name: Upload upload.log artifact (if produced)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-logs
+          path: |
+            upload.log
+            uploaded.log || true
+
+      - name: Skip upload (secrets absent)
         if: ${{ !secrets.PINATA_API_KEY || !secrets.PINATA_API_SECRET }}
-        run: echo "Pinata secrets not set; skipping upload step."
+        run: echo "Pinata secrets missing — upload step skipped."
 
-      - name: Record real sale
-        run: python administrador_de_ingresos.py record --amount 100.0 --currency USD --source market
+      - name: Record sale (ledger)
+        run: |
+          python -u administrador_de_ingresos.py record --amount 100.0 --currency USD --source market 2>&1 | tee ledger_record.log || true
         env:
           LEDGER_FILE: ./ledger.json
 
-      - name: Show ledger (optional)
-        run: python administrador_de_ingresos.py show
-        env:
-          LEDGER_FILE: ./ledger.json
-        continue-on-error: true
+      - name: Upload ledger logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledger-logs
+          path: |
+            ledger_record.log
+            ledger_show.log || true
