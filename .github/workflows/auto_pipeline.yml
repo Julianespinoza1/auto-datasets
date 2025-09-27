@@ -1,4 +1,4 @@
-name: Auto Dataset Pipeline (debug)
+name: Auto Dataset Pipeline (Premium $2,000)
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  debug_run:
+  premium_dataset:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -25,50 +25,53 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install deps
+      - name: Install ALL dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests
+          pip install requests huggingface-hub
+          echo "✅ All dependencies installed"
 
-      - name: Generate dataset (verbose)
+      - name: Generate premium dataset ($2,000)
         run: |
           mkdir -p ./datasets
-          python -u generador.py 2>&1 | tee gen.log
-          ls -la ./datasets || true
-          head -n 40 ./datasets/*.meta.json || true
+          cd ./datasets
+          python -u ../generator.py 2>&1 | tee ../gen.log
+          echo "💰 Premium dataset generated - Price: $2,000 USD"
+          ls -la
 
-      - name: Upload datasets+logs artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-datasets-and-logs
-          path: |
-            ./datasets
-            gen.log
-
-      - name: Check secrets presence
+      - name: Upload to Hugging Face ($2,000)
+        if: env.HF_TOKEN != ''
         run: |
-          echo "PINATA_API_KEY present: $([[ -n \"${{ secrets.PINATA_API_KEY }}\" ]] && echo yes || echo no)"
-          echo "PINATA_API_SECRET present: $([[ -n \"${{ secrets.PINATA_API_SECRET }}\" ]] && echo yes || echo no)"
-        shell: bash
+          python upload_to_huggingface.py 2>&1 | tee hf_upload.log
+          echo "🏆 Dataset listed at $2,000 USD on Hugging Face"
+        env:
+          HUGGINGFACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
 
-      - name: Upload datasets to Pinata (runs from datasets)
+      - name: Upload to Pinata (Backup)
         if: env.PINATA_API_KEY != '' && env.PINATA_API_SECRET != ''
         working-directory: ./datasets
         run: |
-          echo "PWD: $(pwd)"
-          ls -la
-          python -u ../cargador_pinata.py 2>&1 | tee ../upload.log
+          echo "Starting Pinata upload..."
+          python -u ../uploader_pinata.py 2>&1 | tee ../upload.log
         env:
           PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
           PINATA_API_SECRET: ${{ secrets.PINATA_API_SECRET }}
           WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
           UPLOADED_LOG: ../uploaded.log
 
-      - name: Upload upload logs
+      - name: Check secrets status
+        run: |
+          echo "HF_TOKEN present: $([[ -n \"${{ secrets.HF_TOKEN }}\" ]] && echo '✅ YES' || echo '❌ NO')"
+          echo "PINATA_API_KEY present: $([[ -n \"${{ secrets.PINATA_API_KEY }}\" ]] && echo '✅ YES' || echo '❌ NO')"
+          echo "PINATA_API_SECRET present: $([[ -n \"${{ secrets.PINATA_API_SECRET }}\" ]] && echo '✅ YES' || echo '❌ NO')"
+
+      - name: Upload all logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: upload-logs
+          name: premium-dataset-logs
           path: |
+            gen.log
+            hf_upload.log
             upload.log
             uploaded.log
