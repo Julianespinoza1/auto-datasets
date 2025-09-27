@@ -48,8 +48,8 @@ uses: actions/checkout@v4
 
   - name: Check secrets presence
     run: |
-      echo "PINATA_API_KEY present: $([[ -n "${{ secrets.PINATA_API_KEY }}" ]] && echo yes || echo no)"
-      echo "PINATA_API_SECRET present: $([[ -n "${{ secrets.PINATA_API_SECRET }}" ]] && echo yes || echo no)"
+      echo "PINATA_API_KEY present: $([[ -n \"${{ secrets.PINATA_API_KEY }}\" ]] && echo yes || echo no)"
+      echo "PINATA_API_SECRET present: $([[ -n \"${{ secrets.PINATA_API_SECRET }}\" ]] && echo yes || echo no)"
     shell: bash
 
   - name: Upload datasets to Pinata (runs from datasets)
